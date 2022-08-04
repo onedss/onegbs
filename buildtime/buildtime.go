@@ -9,13 +9,18 @@ const char* utils_build_time(void)
 */
 import "C"
 
-import "time"
+import (
+	"log"
+	"time"
+)
 
 const (
 	CBuildTimeLayout = "Jan  _2 2006 15:04:05"
 )
 
 func GetBuildTime() time.Time {
-	t, _ := time.ParseInLocation(CBuildTimeLayout, C.GoString(C.utils_build_time()), time.Local)
+	value := C.GoString(C.utils_build_time())
+	log.Println("BuildTime:", value)
+	t, _ := time.ParseInLocation(CBuildTimeLayout, value, time.Local)
 	return t
 }
