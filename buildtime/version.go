@@ -2,7 +2,7 @@ package buildtime
 
 var (
 	BuildVersion = "v1.0"
-	AgentName    = "OneGBS Client"
+	AgentName    = "OneGBS"
 	BuildTime    = GetBuildTime()
-	BuildTimeStr = "2022-06-01"
+	BuildTimeStr = "2022-08-01"
 )

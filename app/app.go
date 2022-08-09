@@ -7,6 +7,8 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
+	"time"
 )
 
 func StartApp() {
@@ -16,20 +18,21 @@ func StartApp() {
 		DB:       0,              // use default DB
 	})
 	ctx := context.Background()
-	val, err := rdb.Get(ctx, "key").Result()
-	switch {
-	case err == redis.Nil:
-		fmt.Println("key does not exist")
-	case err != nil:
-		fmt.Println("Get failed", err)
-	case val == "":
-		fmt.Println("value is empty")
-	}
+	//val, err := rdb.Get(ctx, "key").Result()
+	//switch {
+	//case err == redis.Nil:
+	//	fmt.Println("key does not exist")
+	//case err != nil:
+	//	fmt.Println("Get failed", err)
+	//case val == "":
+	//	fmt.Println("value is empty")
+	//}
 	cn := rdb.Conn(ctx)
 	defer cn.Close()
 
 	if err := cn.ClientSetName(ctx, "OneGBS").Err(); err != nil {
-		panic(err)
+		log.Printf("Connect to redis error!!! %v", err)
+		return
 	}
 
 	name, err := cn.ClientGetName(ctx).Result()
@@ -47,23 +50,27 @@ func StartApp() {
 	ch := pubsub.Channel()
 
 	for msg := range ch {
-		fmt.Println(msg.Channel, msg.Payload)
-		sendAlarm()
+		alarm := msg.Payload
+		log.Println(msg.Channel, msg.Payload)
+		sendAlarm(alarm)
 	}
 
-	fmt.Println("Done.")
+	log.Println("Done.")
 }
 
-func sendAlarm() {
-	resp, err := http.Get("http://localhost:58080/async/alarm?method=fireCameraAlarm")
+func sendAlarm(alarm string) {
+	client := http.Client{
+		Timeout: 3 * time.Second,
+	}
+	resp, err := client.Post("http://192.168.101.219:58080/async/alarm?method=fireCameraAlarm", "application/json", strings.NewReader(alarm))
 	if err != nil {
 		log.Println("请求失败，错误原因：", err)
 		return
 	}
 	defer resp.Body.Close()
 	// 200 OK
-	fmt.Println("返回码：", resp.Status)
-	fmt.Println("返回头：", resp.Header)
+	fmt.Println("返回码：", resp.Status, "请求内容", alarm)
+	//fmt.Println("返回头：", resp.Header)
 	if resp.StatusCode != 200 {
 		log.Println("请求失败，返回码：", resp.StatusCode)
 		return
@@ -76,7 +83,7 @@ func sendAlarm() {
 			fmt.Println(err)
 			return
 		} else {
-			fmt.Println("读取完毕")
+			fmt.Println("处理完毕")
 			res := string(buf[:n])
 			fmt.Println(res)
 			break
